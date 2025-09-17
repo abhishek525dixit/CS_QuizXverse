@@ -1,0 +1,28 @@
+{
+  "name": "cs-quizverse",
+  "version": "1.0.0",
+  "description": "CS Quizverse - A Computer Science Quiz Application",
+  "main": "index.js",
+  "scripts": {
+    "build": "python build.py",
+    "dev": "python app.py",
+    "netlify-build": "python build.py"
+  },
+  "keywords": [
+    "quiz",
+    "computer-science",
+    "education",
+    "flask",
+    "netlify"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "python": ">=3.11.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/CS_Quizverse.git"
+  }
+}

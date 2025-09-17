@@ -121,7 +121,8 @@
 	}
 
 	async function loadQuestions(){
-		const url = `/api/questions?subject=${encodeURIComponent(config.subject)}&count=${encodeURIComponent(config.count || 30)}`;
+		// Use Netlify Functions API endpoint
+		const url = `/.netlify/functions/api/questions?subject=${encodeURIComponent(config.subject)}&count=${encodeURIComponent(config.count || 30)}`;
 		const res = await fetch(url);
 		const data = await res.json();
 		questions = (data.questions || []).sort(()=> Math.random()-0.5);
@@ -130,7 +131,7 @@
 		// Fetch answer key for live score
 		const ids = questions.map(q=>q.id).join(',');
 		try {
-			const akRes = await fetch(`/api/answer_key?subject=${encodeURIComponent(config.subject)}&ids=${encodeURIComponent(ids)}`);
+			const akRes = await fetch(`/.netlify/functions/api/questions?subject=${encodeURIComponent(config.subject)}&ids=${encodeURIComponent(ids)}&action=answer_key`);
 			const ak = await akRes.json();
 			const map = ak.answers || {};
 			questions.forEach(q=>{ if(map[q.id]) q.correct_index = map[q.id].correct_index; });
@@ -147,10 +148,15 @@
 		if (quizTimerHandle) clearInterval(quizTimerHandle);
 		if (perQTimerHandle) clearInterval(perQTimerHandle);
 		const filled = answers.map((a, i)=> a || { id: questions[i].id, choice_index: -1, time_spent: perQuestionSeconds });
-		const res = await fetch('/api/score',{
+		// Use Netlify Functions API endpoint
+		const res = await fetch('/.netlify/functions/api/questions',{
 			method:'POST',
 			headers:{'Content-Type':'application/json'},
-			body: JSON.stringify({ subject: config.subject, answers: filled })
+			body: JSON.stringify({ 
+				action: 'score',
+				subject: config.subject, 
+				answers: filled 
+			})
 		});
 		const data = await res.json();
 		const baseScore = data.score || 0;
