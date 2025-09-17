@@ -4,9 +4,6 @@
   
   # Directory to publish (where the static files will be generated)
   publish = "dist"
-  
-  # Python version for Netlify Functions
-  environment = { PYTHON_VERSION = "3.11" }
 
 [build.environment]
   PYTHON_VERSION = "3.11"
