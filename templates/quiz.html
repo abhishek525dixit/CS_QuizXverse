@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="card">
+	<h2>{{ subject_label }} Quiz</h2>
+	<div class="quiz-controls">
+		<div class="timer" id="timer">--:--</div>
+		<div class="progress" id="progress">Question 0/0 • Score 0</div>
+	</div>
+	<div class="progress-bar"><div id="barFill"></div></div>
+	<div id="question-container" class="question"></div>
+	<ul id="options" class="options"></ul>
+	<div class="actions">
+		<button class="btn" id="hintBtn">50-50 Hint</button>
+		<button class="btn" id="prevBtn">Previous</button>
+		<button class="btn" id="nextBtn">Next</button>
+		<button class="btn danger" id="finishBtn">Finish</button>
+	</div>
+</section>
+<script>
+window.__QUIZ_CONFIG__ = {
+	subject: "{{ subject }}",
+	count: Number(new URLSearchParams(location.search).get('count')||30),
+	durationMinutes: Number(new URLSearchParams(location.search).get('duration')||20)
+};
+</script>
+{% endblock %}
+

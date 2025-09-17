@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>{{ title or 'CS Quiz Game' }}</title>
+	<link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+	<header class="app-header">
+		<div class="container header-row">
+			<h1><a href="/">CS Quiz Game</a></h1>
+			<div class="theme-toggle">
+				<label>
+					<input id="themeToggle" type="checkbox" />
+					<span>Light</span>
+				</label>
+			</div>
+		</div>
+	</header>
+	<main class="container">
+		{% block content %}{% endblock %}
+	</main>
+	<footer class="app-footer">
+		<div class="container">
+			<p>Made with Flask • Timer-based quizzes • Multi-subject</p>
+		</div>
+	</footer>
+	<script>
+	(function(){
+		const root = document.documentElement;
+		const key = 'quiz_theme';
+		const saved = localStorage.getItem(key)||'dark';
+		root.setAttribute('data-theme', saved);
+		const cb = document.getElementById('themeToggle');
+		if (cb){
+			cb.checked = saved === 'light';
+			cb.addEventListener('change', ()=>{
+				const mode = cb.checked ? 'light' : 'dark';
+				root.setAttribute('data-theme', mode);
+				localStorage.setItem(key, mode);
+			});
+		}
+	})();
+	</script>
+	<script src="/static/js/quiz.js"></script>
+</body>
+</html>
+

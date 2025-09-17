@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="card">
+	<h2>Your Results</h2>
+	<p id="scoreText">Loading...</p>
+	<p id="badgeText"></p>
+	<div id="detailContainer"></div>
+	<div class="card">
+		<h3>Leaderboard (Top 10)</h3>
+		<ol id="leaderboard" style="padding-left:20px"></ol>
+	</div>
+	<a class="btn" href="/">Back to Home</a>
+</section>
+<script>
+(function(){
+	const sp = new URLSearchParams(location.search);
+	const score = Number(sp.get('score'))||0;
+	const total = Number(sp.get('total'))||0;
+	const data = JSON.parse(sessionStorage.getItem('quiz_details')||'{}');
+	const pct = data.percentage ?? (total ? Math.round((score/total)*100) : 0);
+	document.getElementById('scoreText').textContent = `Score: ${score} / ${total} (${pct}%)`;
+	// Badges
+	let badges = [];
+	if (pct >= 80) badges.push('Python Master');
+	if ((data.questions||[]).length && (data.answers||[]).every(a=>a && a.time_spent<=10)) badges.push('Speed Coder');
+	document.getElementById('badgeText').textContent = badges.length ? `Badges: ${badges.join(', ')}` : '';
+	// Details
+	const container = document.getElementById('detailContainer');
+	const list = document.createElement('ol');
+	list.style.paddingLeft = '20px';
+	(data.questions||[]).forEach((q, idx)=>{
+		const li = document.createElement('li');
+		li.style.marginBottom = '10px';
+		const server = (data.serverDetails||[]).find(d=>d.id===q.id) || {};
+		const chosen = (data.answers||[])[idx]?.choice_index;
+		const correctIdx = server.correct_index ?? q.correct_index;
+		const isCorrect = server.is_correct ?? (typeof chosen==='number' && chosen===correctIdx);
+		const qEl = document.createElement('div');
+		qEl.textContent = q.question;
+		li.appendChild(qEl);
+		const opts = document.createElement('ul');
+		opts.style.listStyle = 'none';
+		opts.style.padding = '0';
+		q.options.forEach((opt, i)=>{
+			const oi = document.createElement('li');
+			const mark = i===correctIdx ? '✓' : (i===chosen ? '✗' : '•');
+			const color = i===correctIdx ? '#22c55e' : (i===chosen ? '#ef4444' : '#94a3b8');
+			oi.textContent = `${mark} ${opt}`;
+			oi.style.color = color;
+			opts.appendChild(oi);
+		});
+		const result = document.createElement('div');
+		result.textContent = isCorrect ? 'Correct' : 'Incorrect';
+		result.style.color = isCorrect ? '#22c55e' : '#ef4444';
+		result.style.fontWeight = '700';
+		li.appendChild(opts);
+		li.appendChild(result);
+		list.appendChild(li);
+	});
+	container.appendChild(list);
+	// Leaderboard from localStorage
+	try {
+		const key = `leaderboard_${data.subject}`;
+		const lb = JSON.parse(localStorage.getItem(key)||'[]');
+		const ol = document.getElementById('leaderboard');
+		ol.innerHTML = '';
+		lb.forEach(item=>{
+			const li = document.createElement('li');
+			li.textContent = `${item.name} — ${item.score}/${item.total} (${item.pct}%)`;
+			ol.appendChild(li);
+		});
+	} catch(e) {}
+})();
+</script>
+{% endblock %}
+
