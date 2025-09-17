@@ -27,21 +27,18 @@ def build_static_site():
     # Copy static files
     static_dir = Path("static")
     if static_dir.exists():
-        shutil.copytree(static_dir, dist_dir / "static")
+        shutil.copytree(static_dir, dist_dir / "static", dirs_exist_ok=True)
     
     # Copy data directory
     data_dir = Path("data")
     if data_dir.exists():
-        shutil.copytree(data_dir, dist_dir / "data")
-    
-    # Create templates directory in dist
-    templates_dir = dist_dir / "templates"
-    templates_dir.mkdir()
+        shutil.copytree(data_dir, dist_dir / "data", dirs_exist_ok=True)
     
     # Copy templates
     src_templates = Path("templates")
     if src_templates.exists():
-        shutil.copytree(src_templates, templates_dir)
+        templates_dir = dist_dir / "templates"
+        shutil.copytree(src_templates, templates_dir, dirs_exist_ok=True)
     
     # Generate static HTML files
     with app.test_client() as client:
