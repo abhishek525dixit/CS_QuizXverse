@@ -23,8 +23,10 @@
 	let perQuestionRemaining = perQuestionSeconds;
 	let perQTimerHandle = null;
 	let liveScore = 0; // updated as user answers
-	let hintsUsed = 0;
-	let maxHints = 0;
+    // Per-question hint usage is tracked on each question object as:
+    // q.__hintUsed: boolean, q.__disabledOptions: Set<number>
+    let totalHintsAllowed = 0; // total hints for the whole quiz
+    let totalHintsUsed = 0;    // incremented once per question when hint used
 
 	function updateProgress(){
 		progressEl.textContent = `Question ${currentIndex+1}/${questions.length} • Score ${liveScore}`;
@@ -37,19 +39,26 @@
 		const q = questions[currentIndex];
 		qContainer.textContent = q.question;
 		optionsEl.innerHTML = '';
-		q.options.forEach((opt, idx)=>{
+        q.options.forEach((opt, idx)=>{
 			const li = document.createElement('li');
 			li.textContent = opt;
 			li.tabIndex = 0;
 			li.addEventListener('click', ()=> selectOption(idx));
 			li.addEventListener('keypress', (e)=>{ if(e.key==='Enter') selectOption(idx); });
 			if ((answers[currentIndex]||{}).choice_index === idx){ li.classList.add('selected'); }
-			optionsEl.appendChild(li);
+            // Re-apply previously disabled options if a hint was used on this question
+            if (q.__disabledOptions && q.__disabledOptions.has(idx)){
+                li.classList.add('disabled');
+                li.style.opacity = '0.5';
+                li.style.pointerEvents = 'none';
+            }
+            optionsEl.appendChild(li);
 		});
 		prevBtn.disabled = currentIndex===0;
 		nextBtn.disabled = currentIndex===questions.length-1;
-		updateProgress();
-		resetPerQuestionTimer();
+        updateProgress();
+        resetPerQuestionTimer();
+        updateHintButton();
 	}
 
 	function applySpeedBonus(timeSpentSec, correct){
@@ -120,10 +129,10 @@
 		}
 	}
 
-	async function loadQuestions(){
-		// Use Netlify Functions API endpoint
-		const url = `/.netlify/functions/api/questions?subject=${encodeURIComponent(config.subject)}&count=${encodeURIComponent(config.count || 30)}`;
-		const res = await fetch(url);
+    async function loadQuestions(){
+        // Use Flask API endpoint
+        const url = `/api/questions?subject=${encodeURIComponent(config.subject)}&count=${encodeURIComponent(config.count || 30)}`;
+        const res = await fetch(url);
 		const data = await res.json();
 		questions = (data.questions || []).sort(()=> Math.random()-0.5);
 		answers = new Array(questions.length).fill(null);
@@ -131,32 +140,32 @@
 		// Fetch answer key for live score
 		const ids = questions.map(q=>q.id).join(',');
 		try {
-			const akRes = await fetch(`/.netlify/functions/api/questions?subject=${encodeURIComponent(config.subject)}&ids=${encodeURIComponent(ids)}&action=answer_key`);
+            const akRes = await fetch(`/api/answer_key?subject=${encodeURIComponent(config.subject)}&ids=${encodeURIComponent(ids)}`);
 			const ak = await akRes.json();
 			const map = ak.answers || {};
 			questions.forEach(q=>{ if(map[q.id]) q.correct_index = map[q.id].correct_index; });
 		} catch(e) {}
-		liveScore = 0;
-		hintsUsed = 0;
-		maxHints = Math.floor(questions.length / 2);
-		updateHintButton();
+        liveScore = 0;
+        // Total 50:50 hint budget = half of total questions (rounded down)
+        totalHintsAllowed = Math.floor(questions.length / 2);
+        totalHintsUsed = 0;
+        updateHintButton();
 		renderQuestion();
 		startQuizTimer();
 	}
 
-	async function submitAnswers(){
+    async function submitAnswers(){
 		if (quizTimerHandle) clearInterval(quizTimerHandle);
 		if (perQTimerHandle) clearInterval(perQTimerHandle);
 		const filled = answers.map((a, i)=> a || { id: questions[i].id, choice_index: -1, time_spent: perQuestionSeconds });
-		// Use Netlify Functions API endpoint
-		const res = await fetch('/.netlify/functions/api/questions',{
+        // Use Flask API endpoint
+        const res = await fetch('/api/score',{
 			method:'POST',
 			headers:{'Content-Type':'application/json'},
-			body: JSON.stringify({ 
-				action: 'score',
-				subject: config.subject, 
-				answers: filled 
-			})
+            body: JSON.stringify({
+                subject: config.subject,
+                answers: filled
+            })
 		});
 		const data = await res.json();
 		const baseScore = data.score || 0;
@@ -179,31 +188,44 @@
 		location.href = `/results?score=${encodeURIComponent(finalScore)}&total=${encodeURIComponent(total)}`;
 	}
 
-	function updateHintButton(){
-		const remaining = maxHints - hintsUsed;
-		hintBtn.textContent = `50-50 Hint (${remaining} left)`;
-		hintBtn.disabled = hintsUsed >= maxHints;
-	}
+    function updateHintButton(){
+        const q = questions[currentIndex];
+        const remaining = Math.max(0, totalHintsAllowed - totalHintsUsed);
+        if (!q || typeof q.correct_index !== 'number'){
+            hintBtn.textContent = `50-50 Hint (Unavailable, ${remaining} left)`;
+            hintBtn.disabled = true;
+            return;
+        }
+        const used = !!q.__hintUsed;
+        const labelState = used ? 'Used' : 'Available';
+        hintBtn.textContent = `50-50 Hint (${labelState}, ${remaining} left)`;
+        hintBtn.disabled = used || remaining <= 0;
+    }
 
-	function useHint(){
-		if (hintsUsed >= maxHints) return;
-		const q = questions[currentIndex];
-		if (!q || typeof q.correct_index !== 'number') return;
-		
-		// Remove two wrong options visually
-		let removed = 0;
-		Array.from(optionsEl.children).forEach((li, idx)=>{
-			if (idx !== q.correct_index && removed < 2){
-				li.classList.add('disabled');
-				li.style.opacity = '0.5';
-				li.style.pointerEvents = 'none';
-				removed += 1;
-			}
-		});
-		
-		hintsUsed += 1;
-		updateHintButton();
-	}
+    function useHint(){
+        const q = questions[currentIndex];
+        if (!q || typeof q.correct_index !== 'number') return;
+        if (q.__hintUsed) return;
+        const remaining = Math.max(0, totalHintsAllowed - totalHintsUsed);
+        if (remaining <= 0) { updateHintButton(); return; }
+        // Determine two wrong options to disable
+        const wrongIndexes = q.options.map((_, i)=> i).filter(i=> i !== q.correct_index);
+        // Shuffle and take first 2
+        wrongIndexes.sort(()=> Math.random()-0.5);
+        const toDisable = new Set(wrongIndexes.slice(0, 2));
+        q.__disabledOptions = toDisable;
+        q.__hintUsed = true;
+        totalHintsUsed += 1;
+        // Apply to DOM
+        Array.from(optionsEl.children).forEach((li, idx)=>{
+            if (toDisable.has(idx)){
+                li.classList.add('disabled');
+                li.style.opacity = '0.5';
+                li.style.pointerEvents = 'none';
+            }
+        });
+        updateHintButton();
+    }
 
 	prevBtn.addEventListener('click', ()=>{ if(currentIndex>0){ currentIndex--; renderQuestion(); }});
 	nextBtn.addEventListener('click', ()=>{ handleNoAnswer(); nextOrFinish(); });

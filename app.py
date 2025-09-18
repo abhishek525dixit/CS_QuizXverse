@@ -84,13 +84,13 @@ def get_subjects():
 @app.get("/api/questions")
 def get_questions():
 	subject = request.args.get("subject", type=str, default="").lower()
-	count = request.args.get("count", type=int, default=30)
+	# Enforce fixed quiz length of 50 per subject (or fewer if pool smaller)
 	if subject not in SUPPORTED_SUBJECTS:
 		return jsonify({"error": "Unsupported subject"}), 400
 	pool = QUESTIONS_BY_SUBJECT.get(subject, [])
 	if not pool:
 		return jsonify({"questions": []})
-	count = max(1, min(count, len(pool)))
+	count = max(1, min(50, len(pool)))
 	selected = random.sample(pool, count)
 	public_questions = [
 		{"id": q["id"], "question": q["question"], "options": q["options"]}

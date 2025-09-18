@@ -3,27 +3,22 @@
 <section class="card">
 	<h2>Your Results</h2>
 	<p id="scoreText">Loading...</p>
-	<p id="badgeText"></p>
+	<!-- reward/leaderboard removed -->
 	<div id="detailContainer"></div>
-	<div class="card">
-		<h3>Leaderboard (Top 10)</h3>
-		<ol id="leaderboard" style="padding-left:20px"></ol>
-	</div>
+	<!-- leaderboard removed -->
 	<a class="btn" href="/">Back to Home</a>
 </section>
 <script>
 (function(){
 	const sp = new URLSearchParams(location.search);
-	const score = Number(sp.get('score'))||0;
-	const total = Number(sp.get('total'))||0;
+	const score = Number(sp.get('score'))||0; // this may include speed bonus
+	const total = 50; // fixed quiz length per section
 	const data = JSON.parse(sessionStorage.getItem('quiz_details')||'{}');
-	const pct = data.percentage ?? (total ? Math.round((score/total)*100) : 0);
-	document.getElementById('scoreText').textContent = `Score: ${score} / ${total} (${pct}%)`;
-	// Badges
-	let badges = [];
-	if (pct >= 80) badges.push('Python Master');
-	if ((data.questions||[]).length && (data.answers||[]).every(a=>a && a.time_spent<=10)) badges.push('Speed Coder');
-	document.getElementById('badgeText').textContent = badges.length ? `Badges: ${badges.join(', ')}` : '';
+	// Compute base correct answers from server details to avoid speed bonus in percentage
+	const correctCount = Array.isArray(data.serverDetails) ? data.serverDetails.filter(d=> d && d.is_correct).length : 0;
+	const pct = total ? Math.round((correctCount/total)*100) : 0;
+	document.getElementById('scoreText').textContent = `Score: ${correctCount} / ${total} (${pct}%)`;
+	// rewards removed
 	// Details
 	const container = document.getElementById('detailContainer');
 	const list = document.createElement('ol');
@@ -58,18 +53,7 @@
 		list.appendChild(li);
 	});
 	container.appendChild(list);
-	// Leaderboard from localStorage
-	try {
-		const key = `leaderboard_${data.subject}`;
-		const lb = JSON.parse(localStorage.getItem(key)||'[]');
-		const ol = document.getElementById('leaderboard');
-		ol.innerHTML = '';
-		lb.forEach(item=>{
-			const li = document.createElement('li');
-			li.textContent = `${item.name} — ${item.score}/${item.total} (${item.pct}%)`;
-			ol.appendChild(li);
-		});
-	} catch(e) {}
+	// leaderboard removed
 })();
 </script>
 {% endblock %}

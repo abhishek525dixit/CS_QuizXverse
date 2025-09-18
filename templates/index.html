@@ -10,7 +10,7 @@
 			{% endfor %}
 		</select>
 		<label for="count">Number of questions</label>
-		<input id="count" name="count" type="number" min="1" max="100" value="30" />
+		<input id="count" name="count" type="number" min="50" max="50" value="50" readonly />
 		<label for="duration">Duration (minutes)</label>
 		<input id="duration" name="duration" type="number" min="1" max="180" value="20" />
 		<button type="submit" class="btn primary">Start Quiz</button>
@@ -21,7 +21,7 @@
 function navigateToQuiz(e){
 	e.preventDefault();
 	const subject = document.getElementById('subject').value;
-	const count = document.getElementById('count').value || 30;
+	const count = 50;
 	const duration = document.getElementById('duration').value || 20;
 	const url = `/quiz/${subject}?count=${encodeURIComponent(count)}&duration=${encodeURIComponent(duration)}`;
 	window.location.href = url;
